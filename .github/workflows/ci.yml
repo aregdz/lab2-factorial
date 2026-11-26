@@ -1,0 +1,83 @@
+name: Factorial CI Lab 2
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  # Этап сборки и проверки кода
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: ./.github/actions/setup-python
+
+      - name: Install flake8
+        run: pip install flake8
+
+      - name: Lint code
+        run: flake8 main.py test_main.py
+
+      - name: Prepare build
+        run: |
+          mkdir dist
+          cp main.py test_main.py dist/
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-output
+          path: dist/
+
+  # Этап тестирования
+  test:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: ./.github/actions/setup-python
+
+      - name: Download build artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: build-output
+          path: dist/
+
+      - name: Run unit tests
+        working-directory: dist
+        shell: bash
+        run: |
+          python -m unittest test_main -v 2>&1 | tee report.txt
+
+      - name: Upload tested files
+        uses: actions/upload-artifact@v4
+        with:
+          name: tested-output
+          path: dist/
+
+  # Этап упаковки
+  package:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download tested files
+        uses: actions/download-artifact@v4
+        with:
+          name: tested-output
+          path: dist/
+
+      - name: Create archive
+        run: |
+          tar -czf factorial.tar.gz -C dist main.py test_main.py report.txt
+          tar -tzf factorial.tar.gz
+
+      - name: Upload final package
+        uses: actions/upload-artifact@v4
+        with:
+          name: factorial-package
+          path: factorial.tar.gz
