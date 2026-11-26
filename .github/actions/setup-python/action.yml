@@ -1,0 +1,10 @@
+name: Setup Python environment
+description: Common Python setup template
+
+runs:
+  using: composite
+  steps:
+    - name: Setup Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
